@@ -451,7 +451,7 @@ def sip_chart(months, corpus_vals, invested_vals, height=280):
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=months, y=corpus_vals, mode="lines",
         line=dict(color="#C9A84C", width=2.5),
-        fill="tozeroy", fillcolor="#C9A84C14",
+        fill="tozeroy", fillcolor="rgba(201,168,76,0.08)",
         name="Corpus", hovertemplate="Year %{x}: ₹%{y:,.0f}<extra></extra>"))
     fig.add_trace(go.Scatter(x=months, y=invested_vals, mode="lines",
         line=dict(color="#4A6358", width=1.5, dash="dot"),
@@ -565,7 +565,7 @@ if mode == "Single Fund":
         query = st.text_input("search", placeholder="e.g. Mirae Asset Large Cap, SBI Small Cap, HDFC Flexi Cap...",
                                label_visibility="collapsed")
     with col_btn:
-        search_btn = st.button("Search", use_container_width=True)
+        search_btn = st.button("Search", width='stretch')
 
     if query and (search_btn or "fund_results" in st.session_state):
         if search_btn or "fund_query" not in st.session_state or st.session_state.fund_query != query:
@@ -590,7 +590,7 @@ if mode == "Single Fund":
 
             col_a, col_b = st.columns([1, 1])
             with col_a:
-                analyse_btn = st.button("Analyse Fund ›", use_container_width=True)
+                analyse_btn = st.button("Analyse Fund ›", width='stretch')
             with col_b:
                 period_sel = st.selectbox("Chart period", ["1M","3M","6M","1Y","3Y","5Y","All"],
                                            index=3, label_visibility="collapsed")
@@ -652,7 +652,7 @@ if mode == "Single Fund":
                             df_plot = filter_period(df, period_sel)
                             fig = nav_chart(df_plot, meta.get("scheme_name",""), "#C9A84C")
                             if fig:
-                                st.plotly_chart(fig, use_container_width=True)
+                                st.plotly_chart(fig, width='stretch')
 
                             # Stats
                             if not df_plot.empty:
@@ -701,7 +701,7 @@ if mode == "Single Fund":
                                 inv_list.append(i_)
                             fig2 = sip_chart(month_list, corpus_list, inv_list)
                             if fig2:
-                                st.plotly_chart(fig2, use_container_width=True)
+                                st.plotly_chart(fig2, width='stretch')
 
                         # ── Tab 3: AI Insight
                         with tab3:
@@ -783,7 +783,7 @@ if mode == "Single Fund":
                                 data=csv,
                                 file_name=f"{meta.get('scheme_code','fund')}_nav.csv",
                                 mime="text/csv",
-                                use_container_width=False,
+                                width='content',
                             )
 
 # ══════════════════════════════════════════════════════════════
@@ -815,7 +815,7 @@ else:
                 fund_data_list.append(None)
 
     cmp_period = st.selectbox("Compare period", ["3M","6M","1Y","3Y","5Y","All"], index=2, label_visibility="collapsed")
-    compare_btn = st.button("Compare Funds ›", use_container_width=False)
+    compare_btn = st.button("Compare Funds ›", width='content')
 
     if compare_btn and len(fund_data_list) == 2 and all(fund_data_list):
         with st.spinner("Loading fund data..."):
@@ -838,7 +838,7 @@ else:
             fp2 = filter_period(df2, cmp_period)
             fig = compare_chart(fp1, name1, fp2, name2)
             if fig:
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width='stretch')
 
             # ── Side by side metrics
             st.markdown('<div class="sec-title">Head to Head</div>', unsafe_allow_html=True)
