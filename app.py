@@ -308,7 +308,6 @@ hr { border-color: #1E2B27 !important; }
 # MFAPI.IN  — free, no key needed
 # ══════════════════════════════════════════════════════════════
 MFAPI = "https://api.mfapi.in"
-GEMINI_KEY = "AIzaSyBpDlv6Sb1xc-ZL5o36oak4wfUY3ptkdW0"
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def search_funds(query):
@@ -469,42 +468,6 @@ def sip_chart(months, corpus_vals, invested_vals, height=280):
     )
     return fig
 
-def get_ai_insight(fund_meta, returns, nav_latest, api_key):
-    """Call Gemini API for fund insight."""
-    if not api_key:
-        return None
-    returns_text = "\n".join([f"  {k}: {v}%" for k,v in returns.items() if v is not None])
-    prompt = f"""You are an expert Indian mutual fund analyst. Analyse this fund and give a clear, useful insight for a retail investor.
-
-Fund: {fund_meta.get('scheme_name','')}
-Category: {fund_meta.get('scheme_category','')}
-Fund House: {fund_meta.get('fund_house','')}
-Type: {fund_meta.get('scheme_type','')}
-Latest NAV: Rs {nav_latest:.2f}
-
-Trailing Returns:
-{returns_text}
-
-Write 3-4 sentences covering:
-1. What kind of investor this fund suits
-2. How the returns look vs category benchmarks
-3. One key risk to watch
-4. Overall verdict (good/average/poor for long-term SIP)
-
-Be direct and specific. No generic disclaimers. Write in plain English suitable for a young Indian investor."""
-
-    try:
-        r = requests.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}",
-            headers={"Content-Type": "application/json"},
-            json={"contents": [{"parts": [{"text": prompt}]}]},
-            timeout=20,
-        )
-        if r.status_code == 200:
-            return r.json()["candidates"][0]["content"]["parts"][0]["text"]
-    except Exception:
-        pass
-    return None
 
 # ══════════════════════════════════════════════════════════════
 # HEADER
@@ -512,7 +475,7 @@ Be direct and specific. No generic disclaimers. Write in plain English suitable 
 st.markdown("""
 <div class="fs-header">
   <div class="fs-logo">Fund<span>Sense</span></div>
-  <div class="fs-tagline">Indian Mutual Fund Analyser · Powered by AI</div>
+  <div class="fs-tagline">Indian Mutual Fund Analyser</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -527,25 +490,15 @@ with st.sidebar:
     </div>""", unsafe_allow_html=True)
     st.markdown("<hr>", unsafe_allow_html=True)
 
-    st.markdown('<div style="font-size:11px;color:#4A6358;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Claude API Key</div>', unsafe_allow_html=True)
-    api_key_input = st.text_input("API Key", type="password", label_visibility="collapsed",
-                                   placeholder="AIzaSy... (for AI insights)")
-    if api_key_input:
-        st.markdown('<div style="font-size:11px;color:#8BA888;margin-top:4px">✓ AI insights enabled</div>', unsafe_allow_html=True)
-    else:
-        st.markdown('<div style="font-size:11px;color:#4A6358;margin-top:4px">Key pre-loaded · AI insights ready</div>', unsafe_allow_html=True)
-
     st.markdown("<hr>", unsafe_allow_html=True)
     mode = st.radio("Mode", ["Single Fund", "Compare Funds"], label_visibility="collapsed")
     st.markdown("<hr>", unsafe_allow_html=True)
     st.markdown("""<div style="font-size:10px;color:#1E2B27;line-height:2.2">
     Data: mfapi.in (AMFI)<br>
-    AI: Anthropic Claude<br>
     Updates: Daily NAV<br>
     <span style="color:#2A4A3A">Not financial advice</span>
     </div>""", unsafe_allow_html=True)
 
-GEMINI_KEY = api_key_input if api_key_input else "AIzaSyBpDlv6Sb1xc-ZL5o36oak4wfUY3ptkdW0"
 
 # ══════════════════════════════════════════════════════════════
 # SINGLE FUND MODE
@@ -567,7 +520,6 @@ if mode == "Single Fund":
                 st.session_state.fund_results = results
                 st.session_state.fund_query   = query
                 st.session_state.fund_data    = None
-                st.session_state.ai_insight   = None
 
         results = st.session_state.get("fund_results", [])
         if not results:
@@ -593,7 +545,6 @@ if mode == "Single Fund":
                     with st.spinner("Fetching fund data..."):
                         data = get_fund_data(chosen_code)
                         st.session_state.fund_data   = data
-                        st.session_state.ai_insight  = None
                         st.session_state.chosen_code = chosen_code
 
                 data = st.session_state.get("fund_data")
@@ -638,7 +589,7 @@ if mode == "Single Fund":
                         </div>""", unsafe_allow_html=True)
 
                         # ── Tabs
-                        tab1, tab2, tab3, tab4 = st.tabs(["📈 NAV Chart", "💰 SIP Calculator", "🤖 AI Insight", "ℹ️ Details"])
+                        tab1, tab2, tab4 = st.tabs(["📈 NAV Chart", "💰 SIP Calculator", "ℹ️ Details"])
 
                         # ── Tab 1: NAV Chart
                         with tab1:
@@ -695,44 +646,6 @@ if mode == "Single Fund":
                             fig2 = sip_chart(month_list, corpus_list, inv_list)
                             if fig2:
                                 st.plotly_chart(fig2, width='stretch')
-
-                        # ── Tab 3: AI Insight
-                        with tab3:
-                            if not GEMINI_KEY:
-                                st.markdown("""
-                                <div style="text-align:center;padding:40px 20px;border:1px dashed #1E2B27;border-radius:12px;margin-top:10px">
-                                  <div style="font-size:32px;margin-bottom:12px">🔑</div>
-                                  <div style="font-family:'DM Serif Display',serif;font-size:20px;color:#F0E6C8;margin-bottom:8px">Enter your Claude API Key</div>
-                                  <div style="font-size:13px;color:#4A6358">AI insights are ready to use — no key needed.</div>
-                                </div>""", unsafe_allow_html=True)
-                            else:
-                                if st.session_state.get("ai_insight") is None or st.session_state.get("ai_fund") != chosen_code:
-                                    with st.spinner("Generating AI insight..."):
-                                        insight = get_ai_insight(meta, returns, latest_nav, GEMINI_KEY)
-                                        st.session_state.ai_insight = insight
-                                        st.session_state.ai_fund    = chosen_code
-
-                                insight = st.session_state.get("ai_insight")
-                                if insight:
-                                    st.markdown(f'<div class="ai-box"><div class="ai-text">{insight}</div></div>', unsafe_allow_html=True)
-
-                                    # Quick verdict chips
-                                    one_y = returns.get("1Y")
-                                    three_y = returns.get("3Y")
-                                    chips = []
-                                    if one_y and one_y > 15: chips.append(("Strong 1Y return", "#8BA888"))
-                                    elif one_y and one_y < 5: chips.append(("Weak 1Y return", "#C47A7A"))
-                                    if three_y and three_y > 12: chips.append(("Solid 3Y CAGR", "#8BA888"))
-                                    if "direct" in meta.get("scheme_name","").lower(): chips.append(("Direct Plan ✓", "#C9A84C"))
-                                    if "small cap" in cat.lower(): chips.append(("High Risk", "#C47A7A"))
-                                    elif "large cap" in cat.lower(): chips.append(("Lower Risk", "#8BA888"))
-
-                                    if chips:
-                                        st.markdown('<div style="margin-top:12px">' +
-                                            ''.join([f'<span class="tag" style="border-color:{c}40;color:{c}">{t}</span>' for t,c in chips]) +
-                                            '</div>', unsafe_allow_html=True)
-                                else:
-                                    st.error("Could not generate insight. Check your API key.")
 
                         # ── Tab 4: Details
                         with tab4:
@@ -876,5 +789,5 @@ else:
 # ── Footer
 st.markdown("""
 <div class="footer">
-  FundSense · Data from AMFI via mfapi.in · AI by Google Gemini · Not financial advice
+  FundSense · Data from AMFI via mfapi.in · Not financial advice
 </div>""", unsafe_allow_html=True)
