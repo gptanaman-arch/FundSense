@@ -396,7 +396,7 @@ def nav_chart(df, label, color="#C9A84C", height=340):
         mode="lines",
         line=dict(color=color, width=2),
         fill="tozeroy",
-        fillcolor=color.replace(")", ",0.08)").replace("rgb", "rgba") if "rgb" in color else color + "14",
+        fillcolor="rgba(201,168,76,0.08)",
         hovertemplate="<b>%{x|%d %b %Y}</b><br>NAV: ₹%{y:.4f}<extra></extra>",
         name=label,
     ))
