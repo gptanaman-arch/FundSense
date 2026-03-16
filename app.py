@@ -308,7 +308,7 @@ hr { border-color: #1E2B27 !important; }
 # MFAPI.IN  — free, no key needed
 # ══════════════════════════════════════════════════════════════
 MFAPI = "https://api.mfapi.in"
-ANTHROPIC_KEY = ""   # set via st.secrets or sidebar
+GEMINI_KEY = "AIzaSyBpDlv6Sb1xc-ZL5o36oak4wfUY3ptkdW0"
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def search_funds(query):
@@ -470,21 +470,22 @@ def sip_chart(months, corpus_vals, invested_vals, height=280):
     return fig
 
 def get_ai_insight(fund_meta, returns, nav_latest, api_key):
-    """Call Claude API for fund insight."""
+    """Call Gemini API for fund insight."""
     if not api_key:
         return None
+    returns_text = "\n".join([f"  {k}: {v}%" for k,v in returns.items() if v is not None])
     prompt = f"""You are an expert Indian mutual fund analyst. Analyse this fund and give a clear, useful insight for a retail investor.
 
 Fund: {fund_meta.get('scheme_name','')}
 Category: {fund_meta.get('scheme_category','')}
 Fund House: {fund_meta.get('fund_house','')}
 Type: {fund_meta.get('scheme_type','')}
-Latest NAV: ₹{nav_latest:.2f}
+Latest NAV: Rs {nav_latest:.2f}
 
 Trailing Returns:
-{chr(10).join([f"  {k}: {v}%" for k,v in returns.items() if v is not None])}
+{returns_text}
 
-Write 3–4 sentences covering:
+Write 3-4 sentences covering:
 1. What kind of investor this fund suits
 2. How the returns look vs category benchmarks
 3. One key risk to watch
@@ -494,21 +495,13 @@ Be direct and specific. No generic disclaimers. Write in plain English suitable 
 
     try:
         r = requests.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "x-api-key": api_key,
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json",
-            },
-            json={
-                "model": "claude-sonnet-4-20250514",
-                "max_tokens": 300,
-                "messages": [{"role": "user", "content": prompt}],
-            },
+            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}",
+            headers={"Content-Type": "application/json"},
+            json={"contents": [{"parts": [{"text": prompt}]}]},
             timeout=20,
         )
         if r.status_code == 200:
-            return r.json()["content"][0]["text"]
+            return r.json()["candidates"][0]["content"]["parts"][0]["text"]
     except Exception:
         pass
     return None
@@ -536,11 +529,11 @@ with st.sidebar:
 
     st.markdown('<div style="font-size:11px;color:#4A6358;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Claude API Key</div>', unsafe_allow_html=True)
     api_key_input = st.text_input("API Key", type="password", label_visibility="collapsed",
-                                   placeholder="sk-ant-... (for AI insights)")
+                                   placeholder="AIzaSy... (for AI insights)")
     if api_key_input:
         st.markdown('<div style="font-size:11px;color:#8BA888;margin-top:4px">✓ AI insights enabled</div>', unsafe_allow_html=True)
     else:
-        st.markdown('<div style="font-size:11px;color:#4A6358;margin-top:4px">Enter key to unlock AI insights</div>', unsafe_allow_html=True)
+        st.markdown('<div style="font-size:11px;color:#4A6358;margin-top:4px">Key pre-loaded · AI insights ready</div>', unsafe_allow_html=True)
 
     st.markdown("<hr>", unsafe_allow_html=True)
     mode = st.radio("Mode", ["Single Fund", "Compare Funds"], label_visibility="collapsed")
@@ -552,7 +545,7 @@ with st.sidebar:
     <span style="color:#2A4A3A">Not financial advice</span>
     </div>""", unsafe_allow_html=True)
 
-ANTHROPIC_KEY = api_key_input
+GEMINI_KEY = api_key_input if api_key_input else "AIzaSyBpDlv6Sb1xc-ZL5o36oak4wfUY3ptkdW0"
 
 # ══════════════════════════════════════════════════════════════
 # SINGLE FUND MODE
@@ -705,17 +698,17 @@ if mode == "Single Fund":
 
                         # ── Tab 3: AI Insight
                         with tab3:
-                            if not ANTHROPIC_KEY:
+                            if not GEMINI_KEY:
                                 st.markdown("""
                                 <div style="text-align:center;padding:40px 20px;border:1px dashed #1E2B27;border-radius:12px;margin-top:10px">
                                   <div style="font-size:32px;margin-bottom:12px">🔑</div>
                                   <div style="font-family:'DM Serif Display',serif;font-size:20px;color:#F0E6C8;margin-bottom:8px">Enter your Claude API Key</div>
-                                  <div style="font-size:13px;color:#4A6358">Add your Anthropic API key in the sidebar to unlock AI-powered fund analysis</div>
+                                  <div style="font-size:13px;color:#4A6358">AI insights are ready to use — no key needed.</div>
                                 </div>""", unsafe_allow_html=True)
                             else:
                                 if st.session_state.get("ai_insight") is None or st.session_state.get("ai_fund") != chosen_code:
                                     with st.spinner("Generating AI insight..."):
-                                        insight = get_ai_insight(meta, returns, latest_nav, ANTHROPIC_KEY)
+                                        insight = get_ai_insight(meta, returns, latest_nav, GEMINI_KEY)
                                         st.session_state.ai_insight = insight
                                         st.session_state.ai_fund    = chosen_code
 
@@ -883,5 +876,5 @@ else:
 # ── Footer
 st.markdown("""
 <div class="footer">
-  FundSense · Data from AMFI via mfapi.in · AI by Anthropic Claude · Not financial advice
+  FundSense · Data from AMFI via mfapi.in · AI by Google Gemini · Not financial advice
 </div>""", unsafe_allow_html=True)
